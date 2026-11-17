@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GitTalk
 
-## Getting Started
+**Your codebase, in conversation.**
 
-First, run the development server:
+GitTalk connects a GitHub repository to a chat interface that can index source
+files and answer questions with file citations. The project consists of a
+Next.js client and a Spring Boot API backed by PostgreSQL with pgvector.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Requirements
+
+- Node.js and npm
+- Java 17+
+- Docker Compose (for local PostgreSQL/pgvector)
+- GitHub OAuth app credentials and an OpenAI API key
+
+## Configure credentials
+
+Copy `.env.example` to `.env`, then set the required credentials. Never commit
+`.env` or paste credentials into source files.
+
+The backend reads `DATABASE_URL` (defaults to the local Compose database),
+`DB_USERNAME`, `DB_PASSWORD`, `OPENAI_API_KEY`, `GITHUB_CLIENT_ID`,
+`GITHUB_CLIENT_SECRET`, `TOKEN_ENCRYPTION_PASSWORD`, and
+`TOKEN_ENCRYPTOR_SALT`. The salt must be a unique 16-character hexadecimal
+value; keep the encryption password and salt stable for as long as encrypted
+GitHub tokens need to remain readable.
+
+For local GitHub OAuth, set the callback URL to
+`http://localhost:8080/login/oauth2/code/github`. Set `NEXT_PUBLIC_API_BASE_URL`
+for the client only when the backend is not available at
+`http://localhost:8080`.
+
+## Run locally
+
+From the project root, start the database (Compose reads `DB_PASSWORD` from
+the root `.env` file):
+
+```powershell
+docker compose -f client/docker-compose.yml up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+In another terminal, load the variables from `.env` into the current PowerShell
+process, then start the backend:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+Get-Content .env | ForEach-Object {
+  if ($_ -match '^([^#=]+)=(.*)$') {
+    [Environment]::SetEnvironmentVariable($matches[1], $matches[2], "Process")
+  }
+}
+cd backend
+.\mvnw.cmd spring-boot:run
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Then start the client:
 
-## Learn More
+```powershell
+cd client
+npm ci
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open <http://localhost:3000>.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Checks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```powershell
+cd client
+npm run lint
+npm run build
+```
 
-## Deploy on Vercel
+```powershell
+cd backend
+.\mvnw.cmd test
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The backend context test uses an in-memory H2 database and does not require the
+local PostgreSQL service.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Security notes
+
+All production credentials must be provided through environment variables.
+If any real credential was previously committed or shared, revoke/rotate it
+before publishing this repository. Use HTTPS and secure session cookies in
+production, and restrict CORS to the deployed client origin.

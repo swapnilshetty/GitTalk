@@ -36,7 +36,7 @@ From the project root, start the database (Compose reads `DB_PASSWORD` from
 the root `.env` file):
 
 ```powershell
-docker compose -f client/docker-compose.yml up -d
+docker compose --env-file .env -f client/docker-compose.yml up -d
 ```
 
 In another terminal, load the variables from `.env` into the current PowerShell
